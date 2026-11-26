@@ -489,7 +489,7 @@ function renderTable(rows) {
   });
   const list = [...g.values()].sort((a, b) => a.uke.localeCompare(b.uke) || a.mak.localeCompare(b.mak, 'id', { numeric: true }) || a.cat1.localeCompare(b.cat1));
   const pctCell = (p) => {
-    const cls = p == null ? 'text-gray-400' : p > 100 ? 'text-red-600' : p >= 75 ? 'text-emerald-600' : p >= 40 ? 'text-amber-600' : 'text-gray-700';
+    const cls = p == null ? 'text-gray-400' : 'text-gray-700';
     return `<td class="py-2 text-right ${cls}">${pctTxt(p)}</td>`;
   };
   el('tbody').innerHTML = list.length ? list.map((o) => `
