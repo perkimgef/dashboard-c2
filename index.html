@@ -140,7 +140,7 @@
     <div class="card p-6">
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 class="text-lg font-semibold text-slate-900"><span class="dot bg-amber-500"></span>Komposisi per kategori</h2>
+          <h2 class="text-lg font-semibold text-slate-900"><span class="dot bg-amber-500"></span>Komposisi <span id="pieTitleMetric">Realisasi</span> per Kategori</h2>
           <p class="text-sm text-slate-400 mt-1 mb-4">Porsi tiap kategori · total <span id="pieTotal" class="font-semibold text-slate-600">—</span></p>
         </div>
         <select id="pieMetric" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -153,6 +153,13 @@
         <div class="relative w-full sm:w-1/2" style="height:260px"><canvas id="pieChart"></canvas></div>
         <ul id="pieLegend" class="w-full sm:w-1/2 space-y-3 text-base"></ul>
       </div>
+      <dl class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 border-t border-slate-100 pt-4 text-sm">
+        <div class="flex gap-2"><dt class="font-semibold text-slate-700 shrink-0">cs-firma</dt><dd class="text-slate-500">Cons. Service (Firma)</dd></div>
+        <div class="flex gap-2"><dt class="font-semibold text-slate-700 shrink-0">cs-ic</dt><dd class="text-slate-500">Cons. Service (IC)</dd></div>
+        <div class="flex gap-2"><dt class="font-semibold text-slate-700 shrink-0">ioc</dt><dd class="text-slate-500">Incremental Operating Cost</dd></div>
+        <div class="flex gap-2"><dt class="font-semibold text-slate-700 shrink-0">training</dt><dd class="text-slate-500">Training/Workshop</dd></div>
+        <div class="flex gap-2"><dt class="font-semibold text-slate-700 shrink-0">ncs</dt><dd class="text-slate-500">Non-Consulting Service</dd></div>
+      </dl>
     </div>
   </section>
 
@@ -481,6 +488,7 @@ function renderPie(rows) {
   const items = [...byCat.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const total = items.reduce((a, [, v]) => a + v, 0);
   el('pieTotal').textContent = PIE_LABEL[metric] + ' ' + rpShort(total);
+  el('pieTitleMetric').textContent = PIE_LABEL[metric];
 
   el('pieLegend').innerHTML = items.length ? items.map(([k, v], i) => `
     <li class="flex items-start gap-2">
