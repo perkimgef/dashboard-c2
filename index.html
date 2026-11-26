@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Capaian Anggaran 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .spinner { border: 3px solid #e5e7eb; border-top-color: #2563eb; border-radius: 9999px; width: 2.5rem; height: 2.5rem; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .chart-box { position: relative; height: 300px; }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+<!-- ====== KONFIGURASI ====== -->
+<script>
+  // Link spreadsheet sumber (cukup tempel link "bagikan" dari Google Sheets).
+  const SHEET_URL  = 'https://docs.google.com/spreadsheets/d/1FyCg6j6Tomje0caqXZm3rY4ZcUaxZl8jiUT5kw_7J74/edit?usp=sharing';
+  // Hanya tab ini yang dibaca. Ganti bila nama tab berubah.
+  const SHEET_NAME = 'looker26';
+  const SHEET_ID   = (SHEET_URL.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/) || [])[1];
+  const CSV_URL    = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  // Nama kolom tanggal yang dicari untuk grafik tren (jika nanti ditambahkan di sheet).
+  const DATE_COLUMNS = ['tanggal', 'tgl', 'date', 'tanggal_sp2d', 'bulan'];
+</script>
+
+<!-- Loading overlay -->
+<div id="loading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-50/90 backdrop-blur-sm">
+  <div class="spinner"></div>
+  <p class="mt-4 text-sm text-gray-500">Mengambil data dari Google Sheets…</p>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+  <!-- Header -->
+  <header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900">Dashboard Capaian Anggaran 2026</h1>
+      <p class="text-sm text-gray-500 mt-1">Sumber: <a id="srcLink" href="#" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Google Sheets</a>, tab <span id="srcSheet" class="font-medium">looker26</span> · <span id="lastUpdate">—</span></p>
+    </div>
+    <button id="btnRefresh" class="inline-flex items-center gap-2 self-start sm:self-auto rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      Muat ulang
+    </button>
+  </header>
+
+  <!-- Error -->
+  <div id="errorBox" class="hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
+
+  <!-- Filter -->
+  <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      <label class="block">
+        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Unit kerja (uke)</span>
+        <select id="fUke" class="mt-1 w-full rounded-lg border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 border"></select>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Akun (mak)</span>
+        <select id="fMak" class="mt-1 w-full rounded-lg border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 border"></select>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Kategori (cat1)</span>
+        <select id="fCat" class="mt-1 w-full rounded-lg border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 border"></select>
+      </label>
+      <button id="btnReset" class="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Reset filter</button>
+    </div>
+  </section>
+
+  <!-- KPI -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-1 ring-1 ring-blue-100">
+      <p class="text-sm text-gray-500">Total realisasi</p>
+      <p id="kpiReal" class="mt-2 text-3xl font-semibold text-gray-900 tabular-nums">—</p>
+      <p id="kpiRealFull" class="mt-1 text-xs text-gray-400 tabular-nums">—</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <p class="text-sm text-gray-500">Pagu efektif</p>
+      <p id="kpiEff" class="mt-2 text-2xl font-semibold text-gray-900 tabular-nums">—</p>
+      <p class="mt-1 text-xs text-gray-400">Kolom pagu_eff</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <p class="text-sm text-gray-500">Pagu</p>
+      <p id="kpiPagu" class="mt-2 text-2xl font-semibold text-gray-900 tabular-nums">—</p>
+      <p class="mt-1 text-xs text-gray-400">Kolom pagu</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <p class="text-sm text-gray-500">Serapan thd pagu efektif</p>
+      <p id="kpiPct" class="mt-2 text-2xl font-semibold text-gray-900 tabular-nums">—</p>
+      <div class="mt-3 h-2 w-full rounded-full bg-gray-100 overflow-hidden"><div id="kpiBar" class="h-2 rounded-full bg-blue-600 transition-all duration-500" style="width:0%"></div></div>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:col-span-2">
+      <h2 id="lineTitle" class="text-base font-semibold text-gray-900">Tren realisasi</h2>
+      <p id="lineNote" class="text-xs text-gray-400 mt-0.5 mb-3">—</p>
+      <div class="chart-box"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <h2 class="text-base font-semibold text-gray-900">Pagu efektif vs realisasi per kategori (cat1)</h2>
+      <p class="text-xs text-gray-400 mt-0.5 mb-3">Mengikuti filter di atas</p>
+      <div class="chart-box"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <div class="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 class="text-base font-semibold text-gray-900">Komposisi per kategori (cat1)</h2>
+          <p class="text-xs text-gray-400 mt-0.5 mb-3">Porsi tiap cat1 · total <span id="pieTotal" class="font-medium text-gray-600">—</span></p>
+        </div>
+        <select id="pieMetric" class="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs focus:border-blue-500 focus:ring-blue-500">
+          <option value="realisasi">Realisasi</option>
+          <option value="pagu_eff">Pagu efektif</option>
+          <option value="pagu">Pagu</option>
+        </select>
+      </div>
+      <div class="flex flex-col sm:flex-row items-center gap-4">
+        <div class="relative w-full sm:w-1/2" style="height:240px"><canvas id="pieChart"></canvas></div>
+        <ul id="pieLegend" class="w-full sm:w-1/2 space-y-2 text-sm"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Table -->
+  <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+    <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+      <h2 class="text-base font-semibold text-gray-900">Ringkasan data</h2>
+      <p id="rowCount" class="text-xs text-gray-400">—</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+            <th class="py-2 pr-4 font-medium">uke</th>
+            <th class="py-2 pr-4 font-medium">mak</th>
+            <th class="py-2 pr-4 font-medium">cat1</th>
+            <th class="py-2 pr-4 font-medium text-right">Pagu</th>
+            <th class="py-2 pr-4 font-medium text-right">Pagu efektif</th>
+            <th class="py-2 pr-4 font-medium text-right">Realisasi</th>
+            <th class="py-2 font-medium text-right">Serapan</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y divide-gray-100 tabular-nums"></tbody>
+        <tfoot id="tfoot" class="border-t-2 border-gray-200 font-semibold tabular-nums"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <p class="text-center text-xs text-gray-400 pb-4">Serapan = realisasi ÷ pagu efektif. Nilai kosong atau “-” dihitung 0.</p>
+</div>
+
+<script>
+// ====== Util ======
+const fmtFull = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+const fmtPct  = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const rpShort = (v) => {
+  const a = Math.abs(v);
+  if (a >= 1e12) return 'Rp ' + (v / 1e12).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' T';
+  if (a >= 1e9)  return 'Rp ' + (v / 1e9).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' M';
+  if (a >= 1e6)  return 'Rp ' + (v / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt';
+  return 'Rp ' + fmtFull.format(v);
+};
+const pct = (num, den) => den ? (num / den) * 100 : null;
+const pctTxt = (p) => p == null ? '—' : fmtPct.format(p) + '%';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Angka dari Sheets bisa berbentuk 8898787200, "8,898,787,200", "8.898.787.200", "Rp 1.000", "-" atau kosong.
+function toNum(v) {
+  if (v == null) return 0;
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = String(v).replace(/rp/ig, '').replace(/\s/g, '');
+  if (s === '' || /^-+$/.test(s)) return 0;
+  if (/^-?\d{1,3}([.,]\d{3})+$/.test(s)) s = s.replace(/[.,]/g, '');      // pemisah ribuan
+  else if (/^-?\d+(\.\d{3})+,\d+$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); // 1.234,5
+  else if (/^-?\d+(,\d{3})+\.\d+$/.test(s)) s = s.replace(/,/g, '');      // 1,234.5
+  else s = s.replace(',', '.');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);                 // 2026-03-15
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);           // 15/03/2026 (hari/bulan/tahun)
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+  m = s.match(/^Date\((\d+),(\d+),(\d+)/);                           // format gviz
+  if (m) return new Date(+m[1], +m[2], +m[3]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+// ====== State ======
+let RAW = [];
+let DATE_COL = null;
+let lineChart, barChart, pieChart;
+const PIE_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+const PIE_LABEL = { realisasi: 'Realisasi', pagu_eff: 'Pagu efektif', pagu: 'Pagu' };
+const el = (id) => document.getElementById(id);
+
+// ====== Load ======
+// Cara 1: unduh CSV (fetch). Cara 2 (cadangan): JSONP lewat tag <script>, yang tidak terkena blokir CORS
+// sehingga tetap jalan walau file dibuka langsung dari komputer (file://).
+async function fetchCsv() {
+  const res = await fetch(CSV_URL + '&_=' + Date.now(), { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  if (/^\s*<(!doctype|html)/i.test(text)) throw new Error('Google mengembalikan halaman login, bukan CSV');
+  const out = Papa.parse(text, { header: true, skipEmptyLines: true, transformHeader: (h) => h.trim().toLowerCase() });
+  return { fields: out.meta.fields || [], rows: out.data };
+}
+
+function fetchJsonp() {
+  return new Promise((resolve, reject) => {
+    const cb = '__gviz_' + Date.now();
+    const s = document.createElement('script');
+    const cleanup = () => { clearTimeout(timer); delete window[cb]; s.remove(); };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('waktu habis')); }, 20000);
+    window[cb] = (resp) => {
+      cleanup();
+      if (resp.status === 'error') {
+        reject(new Error((resp.errors || []).map((e) => e.detailed_message || e.message).join('; ') || 'gviz error'));
+        return;
+      }
+      const cols = resp.table.cols.map((c) => String(c.label || c.id || '').trim().toLowerCase());
+      const rows = resp.table.rows.map((r) => {
+        const o = {};
+        cols.forEach((name, k) => { const cell = r.c[k]; o[name] = cell ? (cell.v != null ? cell.v : cell.f) : null; });
+        return o;
+      });
+      resolve({ fields: cols, rows });
+    };
+    s.onerror = () => { cleanup(); reject(new Error('skrip Google Sheets gagal dimuat')); };
+    s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json%3BresponseHandler:${cb}&headers=1&sheet=${encodeURIComponent(SHEET_NAME)}&_=${Date.now()}`;
+    document.head.appendChild(s);
+  });
+}
+
+async function load() {
+  el('loading').classList.remove('hidden');
+  el('errorBox').classList.add('hidden');
+  let data, err1;
+  try { data = await fetchCsv(); }
+  catch (e) {
+    err1 = e;
+    try { data = await fetchJsonp(); }
+    catch (e2) {
+      el('loading').classList.add('hidden');
+      showError(`Gagal mengambil data dari tab "${SHEET_NAME}". CSV: ${err1.message}. Cadangan: ${e2.message}. ` +
+        'Pastikan spreadsheet dibagikan "Siapa saja yang memiliki link – Pelihat", nama tab benar, dan koneksi tidak memblokir docs.google.com.');
+      return;
+    }
+  }
+  try {
+    const fields = data.fields;
+    const need = ['uke', 'mak', 'cat1', 'pagu', 'pagu_eff', 'realisasi'];
+    const missing = need.filter((f) => !fields.includes(f));
+    if (missing.length) throw new Error('Kolom tidak ditemukan: ' + missing.join(', ') + '. Kolom yang terbaca: ' + fields.join(', '));
+    DATE_COL = DATE_COLUMNS.find((c) => fields.includes(c)) || null;
+    RAW = data.rows
+      .filter((r) => String(r.uke ?? '').trim() !== '')
+      .map((r) => {
+        const uke = String(r.uke).trim();
+        return {
+          uke: uke.toUpperCase() === 'KKIP' ? 'KKPI' : uke,
+          mak: String(r.mak ?? '').trim(),
+          cat1: String(r.cat1 ?? '').trim() || '(kosong)',
+          pagu: toNum(r.pagu),
+          pagu_eff: toNum(r.pagu_eff),
+          realisasi: toNum(r.realisasi),
+          date: DATE_COL ? parseDate(r[DATE_COL]) : null,
+        };
+      });
+    el('lastUpdate').textContent = 'diperbarui ' + new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    buildFilters();
+    render();
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    el('loading').classList.add('hidden');
+  }
+}
+
+function showError(msg) {
+  el('errorBox').textContent = msg;
+  el('errorBox').classList.remove('hidden');
+}
+
+// ====== Filters (bertingkat) ======
+const uniq = (arr) => [...new Set(arr)].sort((a, b) => String(a).localeCompare(String(b), 'id', { numeric: true }));
+
+function fillSelect(sel, values, allLabel) {
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${allLabel}</option>` + values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  sel.value = values.includes(cur) ? cur : '';
+}
+
+function buildFilters() {
+  const u = el('fUke').value, m = el('fMak').value;
+  fillSelect(el('fUke'), uniq(RAW.map((r) => r.uke)), 'Semua unit');
+  fillSelect(el('fMak'), uniq(RAW.filter((r) => !u || r.uke === u).map((r) => r.mak)), 'Semua akun');
+  fillSelect(el('fCat'), uniq(RAW.filter((r) => (!u || r.uke === u) && (!m || r.mak === m)).map((r) => r.cat1)), 'Semua kategori');
+}
+
+function filtered() {
+  const u = el('fUke').value, m = el('fMak').value, c = el('fCat').value;
+  return RAW.filter((r) => (!u || r.uke === u) && (!m || r.mak === m) && (!c || r.cat1 === c));
+}
+
+// ====== Render ======
+const sum = (rows, k) => rows.reduce((a, r) => a + r[k], 0);
+
+function render() {
+  const rows = filtered();
+  renderKpi(rows);
+  renderLine(rows);
+  renderBar(rows);
+  renderPie(rows);
+  renderTable(rows);
+}
+
+function renderKpi(rows) {
+  const real = sum(rows, 'realisasi'), eff = sum(rows, 'pagu_eff'), pagu = sum(rows, 'pagu');
+  const p = pct(real, eff);
+  el('kpiReal').textContent = rpShort(real);
+  el('kpiRealFull').textContent = 'Rp ' + fmtFull.format(real);
+  el('kpiEff').textContent = rpShort(eff);
+  el('kpiPagu').textContent = rpShort(pagu);
+  el('kpiPct').textContent = pctTxt(p);
+  el('kpiBar').style.width = Math.min(100, p || 0) + '%';
+  el('kpiBar').className = 'h-2 rounded-full transition-all duration-500 ' + (p > 100 ? 'bg-red-500' : 'bg-blue-600');
+}
+
+const axisMoney = { ticks: { callback: (v) => rpShort(v), color: '#6b7280', font: { size: 11 } }, grid: { color: '#f3f4f6' }, beginAtZero: true };
+const tipMoney = { callbacks: { label: (ctx) => `${ctx.dataset.label}: Rp ${fmtFull.format(ctx.parsed.y ?? ctx.parsed)}` } };
+
+function renderLine(rows) {
+  let labels, datasets;
+  if (DATE_COL) {
+    // Tren kumulatif realisasi per bulan berdasarkan kolom tanggal
+    el('lineTitle').textContent = 'Tren realisasi kumulatif per bulan';
+    el('lineNote').textContent = `Berdasarkan kolom "${DATE_COL}"`;
+    const byMonth = new Map();
+    rows.filter((r) => r.date).forEach((r) => {
+      const k = `${r.date.getFullYear()}-${String(r.date.getMonth() + 1).padStart(2, '0')}`;
+      byMonth.set(k, (byMonth.get(k) || 0) + r.realisasi);
+    });
+    const keys = [...byMonth.keys()].sort();
+    let run = 0;
+    labels = keys.map((k) => new Date(k + '-01').toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }));
+    datasets = [
+      { label: 'Realisasi kumulatif', data: keys.map((k) => (run += byMonth.get(k))), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.08)', fill: true, tension: 0, pointRadius: 3 },
+      { label: 'Pagu efektif', data: keys.map(() => sum(rows, 'pagu_eff')), borderColor: '#9ca3af', borderDash: [6, 4], pointRadius: 0, fill: false },
+    ];
+  } else {
+    // Sheet tidak punya kolom tanggal: tampilkan realisasi kumulatif mengikuti urutan akun (mak)
+    el('lineTitle').textContent = 'Realisasi kumulatif per akun (mak)';
+    el('lineNote').textContent = 'Sheet belum punya kolom tanggal, jadi sumbu-X memakai urutan akun. Tambahkan kolom "tanggal" agar grafik ini otomatis menjadi tren waktu.';
+    const byMak = new Map();
+    rows.forEach((r) => {
+      const o = byMak.get(r.mak) || { real: 0, eff: 0 };
+      o.real += r.realisasi; o.eff += r.pagu_eff; byMak.set(r.mak, o);
+    });
+    const keys = [...byMak.keys()].sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+    let rr = 0, re = 0;
+    labels = keys;
+    datasets = [
+      { label: 'Realisasi kumulatif', data: keys.map((k) => (rr += byMak.get(k).real)), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.08)', fill: true, tension: 0, pointRadius: 3 },
+      { label: 'Pagu efektif kumulatif', data: keys.map((k) => (re += byMak.get(k).eff)), borderColor: '#9ca3af', borderDash: [6, 4], pointRadius: 2, fill: false, tension: 0 },
+    ];
+  }
+  const cfg = {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } }, tooltip: tipMoney },
+      scales: { y: axisMoney, x: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { display: false } } },
+    },
+  };
+  if (lineChart) { lineChart.data = cfg.data; lineChart.update(); } else { lineChart = new Chart(el('lineChart'), cfg); }
+}
+
+function renderBar(rows) {
+  const byCat = new Map();
+  rows.forEach((r) => {
+    const o = byCat.get(r.cat1) || { eff: 0, real: 0 };
+    o.eff += r.pagu_eff; o.real += r.realisasi; byCat.set(r.cat1, o);
+  });
+  const keys = [...byCat.keys()].sort((a, b) => byCat.get(b).eff - byCat.get(a).eff);
+  const data = {
+    labels: keys,
+    datasets: [
+      { label: 'Pagu efektif', data: keys.map((k) => byCat.get(k).eff), backgroundColor: '#dbeafe', borderRadius: 6 },
+      { label: 'Realisasi', data: keys.map((k) => byCat.get(k).real), backgroundColor: '#2563eb', borderRadius: 6 },
+    ],
+  };
+  const cfg = {
+    type: 'bar', data,
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+        tooltip: { callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: Rp ${fmtFull.format(ctx.parsed.y)}`,
+          afterBody: (items) => { const o = byCatRef.get(items[0].label); return o ? 'Serapan: ' + pctTxt(pct(o.real, o.eff)) : ''; },
+        } },
+      },
+      scales: { y: axisMoney, x: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { display: false } } },
+    },
+  };
+  byCatRef = byCat;
+  if (barChart) { barChart.data = data; barChart.update(); } else { barChart = new Chart(el('barChart'), cfg); }
+}
+let byCatRef = new Map();
+
+// Plugin kecil: tulis persentase di atas tiap irisan pie (irisan < 4% tidak diberi label agar tidak bertumpuk)
+const pieLabels = {
+  id: 'pieLabels',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const ds = chart.data.datasets[0];
+    const total = ds.data.reduce((a, b) => a + b, 0);
+    if (!total) return;
+    chart.getDatasetMeta(0).data.forEach((arc, i) => {
+      const share = ds.data[i] / total * 100;
+      if (share < 4) return;
+      const p = arc.tooltipPosition();
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '600 12px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(fmtPct.format(share) + '%', p.x, p.y);
+      ctx.restore();
+    });
+  },
+};
+
+function renderPie(rows) {
+  const metric = el('pieMetric').value;
+  const byCat = new Map();
+  rows.forEach((r) => byCat.set(r.cat1, (byCat.get(r.cat1) || 0) + r[metric]));
+  const items = [...byCat.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const total = items.reduce((a, [, v]) => a + v, 0);
+  el('pieTotal').textContent = PIE_LABEL[metric] + ' ' + rpShort(total);
+
+  el('pieLegend').innerHTML = items.length ? items.map(([k, v], i) => `
+    <li class="flex items-start gap-2">
+      <span class="mt-1 h-3 w-3 shrink-0 rounded-sm" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
+      <div class="min-w-0 flex-1">
+        <div class="flex justify-between gap-2"><span class="font-medium text-gray-800 truncate">${esc(k)}</span><span class="text-gray-500 tabular-nums">${pctTxt(pct(v, total))}</span></div>
+        <div class="text-xs text-gray-500 tabular-nums">${rpShort(v)} <span class="text-gray-400">(Rp ${fmtFull.format(v)})</span></div>
+      </div>
+    </li>`).join('') : '<li class="text-gray-400">Tidak ada nilai untuk filter ini.</li>';
+
+  const data = {
+    labels: items.map(([k]) => k),
+    datasets: [{ data: items.map(([, v]) => v), backgroundColor: items.map((_, i) => PIE_COLORS[i % PIE_COLORS.length]), borderColor: '#ffffff', borderWidth: 2 }],
+  };
+  if (pieChart) { pieChart.data = data; pieChart.update(); return; }
+  pieChart = new Chart(el('pieChart'), {
+    type: 'pie', data, plugins: [pieLabels],
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => {
+          const t = ctx.dataset.data.reduce((a, b) => a + b, 0);
+          return `${ctx.label}: Rp ${fmtFull.format(ctx.parsed)} (${pctTxt(pct(ctx.parsed, t))})`;
+        } } },
+      },
+    },
+  });
+}
+
+function renderTable(rows) {
+  // Ringkas per uke + mak + cat1
+  const g = new Map();
+  rows.forEach((r) => {
+    const k = r.uke + '|' + r.mak + '|' + r.cat1;
+    const o = g.get(k) || { uke: r.uke, mak: r.mak, cat1: r.cat1, pagu: 0, eff: 0, real: 0 };
+    o.pagu += r.pagu; o.eff += r.pagu_eff; o.real += r.realisasi; g.set(k, o);
+  });
+  const list = [...g.values()].sort((a, b) => a.uke.localeCompare(b.uke) || a.mak.localeCompare(b.mak, 'id', { numeric: true }) || a.cat1.localeCompare(b.cat1));
+  const pctCell = (p) => {
+    const cls = p == null ? 'text-gray-400' : p > 100 ? 'text-red-600' : p >= 75 ? 'text-emerald-600' : p >= 40 ? 'text-amber-600' : 'text-gray-700';
+    return `<td class="py-2 text-right ${cls}">${pctTxt(p)}</td>`;
+  };
+  el('tbody').innerHTML = list.length ? list.map((o) => `
+    <tr class="hover:bg-gray-50">
+      <td class="py-2 pr-4 font-medium text-gray-900">${esc(o.uke)}</td>
+      <td class="py-2 pr-4">${esc(o.mak)}</td>
+      <td class="py-2 pr-4"><span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs">${esc(o.cat1)}</span></td>
+      <td class="py-2 pr-4 text-right">${fmtFull.format(o.pagu)}</td>
+      <td class="py-2 pr-4 text-right">${fmtFull.format(o.eff)}</td>
+      <td class="py-2 pr-4 text-right">${fmtFull.format(o.real)}</td>
+      ${pctCell(pct(o.real, o.eff))}
+    </tr>`).join('') : `<tr><td colspan="7" class="py-6 text-center text-gray-400">Tidak ada data untuk filter ini.</td></tr>`;
+  const tp = sum(rows, 'pagu'), te = sum(rows, 'pagu_eff'), tr = sum(rows, 'realisasi');
+  el('tfoot').innerHTML = `<tr>
+      <td class="py-2 pr-4" colspan="3">Total</td>
+      <td class="py-2 pr-4 text-right">${fmtFull.format(tp)}</td>
+      <td class="py-2 pr-4 text-right">${fmtFull.format(te)}</td>
+      <td class="py-2 pr-4 text-right">${fmtFull.format(tr)}</td>
+      <td class="py-2 text-right">${pctTxt(pct(tr, te))}</td></tr>`;
+  el('rowCount').textContent = `${list.length} baris ringkasan dari ${rows.length} baris data`;
+}
+
+// ====== Events ======
+el('fUke').addEventListener('change', () => { buildFilters(); render(); });
+el('fMak').addEventListener('change', () => { buildFilters(); render(); });
+el('fCat').addEventListener('change', render);
+el('pieMetric').addEventListener('change', () => renderPie(filtered()));
+el('btnReset').addEventListener('click', () => { el('fUke').value = ''; el('fMak').value = ''; el('fCat').value = ''; buildFilters(); render(); });
+el('btnRefresh').addEventListener('click', load);
+
+el('srcLink').href = SHEET_URL;
+el('srcSheet').textContent = SHEET_NAME;
+if (!SHEET_ID) { el('loading').classList.add('hidden'); showError('SHEET_URL tidak valid: ID spreadsheet tidak ditemukan.'); }
+else load();
+</script>
+</body>
+</html>
