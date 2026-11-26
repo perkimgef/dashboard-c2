@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Capaian Anggaran 2026</title>
+<title>Dashboard Realisasi Anggaran · GEF Indonesia SCIP Komponen 2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -50,9 +50,10 @@
     <div class="absolute right-24 -bottom-24 h-48 w-48 rounded-full bg-white/10"></div>
     <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
       <div>
-        <p class="text-sm font-medium uppercase tracking-widest text-indigo-100">DIPA 2026</p>
-        <h1 class="mt-1 text-3xl sm:text-4xl font-bold tracking-tight">Dashboard Capaian Anggaran 2026</h1>
-        <p class="text-base text-indigo-100 mt-2">Sumber: <a id="srcLink" href="#" target="_blank" rel="noopener" class="font-medium text-white underline decoration-white/40 underline-offset-2 hover:decoration-white">Google Sheets</a>, tab <span id="srcSheet" class="font-semibold text-white">looker26</span> · <span id="lastUpdate">—</span></p>
+        <p class="text-sm font-medium uppercase tracking-widest text-indigo-100">DIPA Tahun Anggaran 2026</p>
+        <h1 class="mt-1 text-3xl sm:text-4xl font-bold tracking-tight">Dashboard Realisasi Anggaran</h1>
+        <p class="mt-1 text-lg font-medium text-white/90">Kegiatan GEF Indonesia SCIP Komponen 2</p>
+        <p class="text-base text-indigo-100 mt-2"><span id="lastUpdate">—</span></p>
       </div>
       <button id="btnRefresh" class="inline-flex items-center gap-2 self-start sm:self-auto rounded-xl bg-white/15 px-4 py-2.5 text-base font-semibold text-white ring-1 ring-white/30 backdrop-blur hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -311,7 +312,7 @@ async function load() {
           date: DATE_COL ? parseDate(r[DATE_COL]) : null,
         };
       });
-    el('lastUpdate').textContent = 'diperbarui ' + new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    el('lastUpdate').textContent = 'Diperbarui ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     buildFilters();
     render();
   } catch (e) {
@@ -554,8 +555,6 @@ el('pieMetric').addEventListener('change', () => renderPie(filtered()));
 el('btnReset').addEventListener('click', () => { el('fUke').value = ''; el('fMak').value = ''; el('fCat').value = ''; buildFilters(); render(); });
 el('btnRefresh').addEventListener('click', load);
 
-el('srcLink').href = SHEET_URL;
-el('srcSheet').textContent = SHEET_NAME;
 if (!SHEET_ID) { el('loading').classList.add('hidden'); showError('SHEET_URL tidak valid: ID spreadsheet tidak ditemukan.'); }
 else load();
 </script>
