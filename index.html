@@ -20,6 +20,22 @@
   .dot { display: inline-block; width: .55rem; height: .55rem; border-radius: 9999px; margin-right: .5rem; vertical-align: .1rem; }
   .fsel { width: 100%; margin-top: .35rem; border: 1px solid #e5e7eb; background: #f8fafc; border-radius: .75rem; padding: .55rem .8rem; font-size: .95rem; }
   .fsel:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+  /* ====== Animasi ====== */
+  .reveal { opacity: 0; transform: translateY(14px); }
+  .reveal.in { opacity: 1; transform: none; transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
+  .lift { transition: transform .25s ease, box-shadow .25s ease; }
+  .lift:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(16,24,40,.05), 0 12px 28px rgba(79,70,229,.10); }
+  .blob { animation: float 9s ease-in-out infinite; }
+  .blob.b2 { animation-duration: 12s; animation-delay: -3s; }
+  @keyframes float { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-14px, 10px); } }
+  .row-in { animation: rowIn .45s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  #loading { transition: opacity .35s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; }
+    .reveal.in, .lift, .lift:hover { transition: none; transform: none; }
+    .blob, .row-in { animation: none; }
+  }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -45,9 +61,9 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
   <!-- Header -->
-  <header class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-teal-500 px-6 py-7 sm:px-8 text-white shadow-lg shadow-indigo-200/60">
-    <div class="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10"></div>
-    <div class="absolute right-24 -bottom-24 h-48 w-48 rounded-full bg-white/10"></div>
+  <header class="reveal relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-teal-500 px-6 py-7 sm:px-8 text-white shadow-lg shadow-indigo-200/60">
+    <div class="blob absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10"></div>
+    <div class="blob b2 absolute right-24 -bottom-24 h-48 w-48 rounded-full bg-white/10"></div>
     <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
       <div>
         <p class="text-sm font-medium uppercase tracking-widest text-indigo-100">DIPA Tahun Anggaran 2026</p>
@@ -66,7 +82,7 @@
   <div id="errorBox" class="hidden rounded-xl border border-rose-200 bg-rose-50 p-4 text-base text-rose-700"></div>
 
   <!-- Filter -->
-  <section class="card p-5">
+  <section class="reveal card p-5">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
       <label class="block">
         <span class="text-sm font-semibold text-slate-600">Unit kerja (uke)</span>
@@ -86,7 +102,7 @@
 
   <!-- KPI -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="card p-5">
+    <div class="reveal lift card p-5">
       <div class="flex items-center gap-3">
         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z"/></svg>
@@ -95,7 +111,7 @@
       </div>
       <p id="kpiPagu" class="mt-4 text-3xl font-bold text-slate-900 tabular-nums">—</p>
     </div>
-    <div class="card p-5">
+    <div class="reveal lift card p-5">
       <div class="flex items-center gap-3">
         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z"/></svg>
@@ -104,7 +120,7 @@
       </div>
       <p id="kpiEff" class="mt-4 text-3xl font-bold text-slate-900 tabular-nums">—</p>
     </div>
-    <div class="card p-5 bg-gradient-to-br from-emerald-50 to-white ring-1 ring-emerald-100">
+    <div class="reveal lift card p-5 bg-gradient-to-br from-emerald-50 to-white ring-1 ring-emerald-100">
       <div class="flex items-center gap-3">
         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm shadow-emerald-200">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/></svg>
@@ -113,7 +129,7 @@
       </div>
       <p id="kpiReal" class="mt-4 text-4xl font-bold text-slate-900 tabular-nums">—</p>
     </div>
-    <div class="card p-5">
+    <div class="reveal lift card p-5">
       <div class="flex items-center gap-3">
         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z"/></svg>
@@ -127,17 +143,17 @@
 
   <!-- Charts -->
   <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="card p-6 lg:col-span-2">
+    <div class="reveal card p-6 lg:col-span-2">
       <h2 id="lineTitle" class="text-lg font-semibold text-slate-900"><span class="dot bg-indigo-500"></span>Tren realisasi</h2>
       <p id="lineNote" class="text-sm text-slate-400 mt-1 mb-4">—</p>
       <div class="chart-box"><canvas id="lineChart"></canvas></div>
     </div>
-    <div class="card p-6 flex flex-col">
+    <div class="reveal card p-6 flex flex-col">
       <h2 class="text-lg font-semibold text-slate-900"><span class="dot bg-teal-500"></span>Pagu efektif vs realisasi per kategori</h2>
       <p class="text-sm text-slate-400 mt-1 mb-4">Mengikuti filter di atas</p>
       <div class="relative flex-1 min-h-[320px]"><canvas id="barChart"></canvas></div>
     </div>
-    <div class="card p-6">
+    <div class="reveal card p-6">
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 class="text-lg font-semibold text-slate-900"><span class="dot bg-amber-500"></span>Komposisi <span id="pieTitleMetric">Realisasi</span> per Kategori</h2>
@@ -164,7 +180,7 @@
   </section>
 
   <!-- Table -->
-  <section class="card p-6">
+  <section class="reveal card p-6">
     <div class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
       <h2 class="text-lg font-semibold text-slate-900"><span class="dot bg-violet-500"></span>Ringkasan data</h2>
       <p id="rowCount" class="text-sm text-slate-400">—</p>
@@ -238,6 +254,33 @@ const PIE_COLORS = ['#4f46e5', '#14b8a6', '#f59e0b', '#f43f5e', '#8b5cf6', '#0ea
 Chart.defaults.font.family = '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif';
 Chart.defaults.font.size = 13;
 Chart.defaults.color = '#64748b';
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+Chart.defaults.animation = REDUCED ? false : { duration: 1000, easing: 'easeOutQuart' };
+
+// Munculkan kartu satu per satu (sekali, setelah data pertama tampil)
+let revealed = false;
+function revealAll() {
+  if (revealed) return;
+  revealed = true;
+  document.querySelectorAll('.reveal').forEach((n, i) => {
+    n.style.transitionDelay = REDUCED ? '0ms' : (i * 70) + 'ms';
+    requestAnimationFrame(() => n.classList.add('in'));
+  });
+}
+
+// Angka KPI berhitung naik dari nilai sebelumnya ke nilai baru
+function countTo(node, to, fmt) {
+  const from = parseFloat(node.dataset.v || '0');
+  node.dataset.v = String(to);
+  if (REDUCED || from === to) { node.textContent = fmt(to); return; }
+  const t0 = performance.now(), dur = 900;
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    node.textContent = fmt(from + (to - from) * e);
+    if (k < 1 && node.dataset.v === String(to)) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 const PIE_LABEL = { realisasi: 'Realisasi', pagu_eff: 'Pagu efektif', pagu: 'Pagu' };
 const el = (id) => document.getElementById(id);
 
@@ -317,6 +360,7 @@ async function load() {
     el('lastUpdate').textContent = 'Diperbarui ' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     buildFilters();
     render();
+    revealAll();
   } catch (e) {
     showError(e.message);
   } finally {
@@ -325,6 +369,7 @@ async function load() {
 }
 
 function showError(msg) {
+  revealAll();
   el('errorBox').textContent = msg;
   el('errorBox').classList.remove('hidden');
 }
@@ -365,10 +410,10 @@ function render() {
 function renderKpi(rows) {
   const real = sum(rows, 'realisasi'), eff = sum(rows, 'pagu_eff'), pagu = sum(rows, 'pagu');
   const p = pct(real, eff);
-  el('kpiReal').textContent = rpShort(real);
-  el('kpiEff').textContent = rpShort(eff);
-  el('kpiPagu').textContent = rpShort(pagu);
-  el('kpiPct').textContent = pctTxt(p);
+  countTo(el('kpiReal'), real, rpShort);
+  countTo(el('kpiEff'), eff, rpShort);
+  countTo(el('kpiPagu'), pagu, rpShort);
+  if (p == null) { el('kpiPct').dataset.v = '0'; el('kpiPct').textContent = '—'; } else countTo(el('kpiPct'), p, pctTxt);
   el('kpiBar').style.width = Math.min(100, p || 0) + '%';
   el('kpiBar').className = 'h-2.5 rounded-full transition-all duration-500 ' + (p > 100 ? 'bg-rose-500' : 'bg-gradient-to-r from-indigo-500 to-violet-500');
 }
@@ -530,8 +575,8 @@ function renderTable(rows) {
     const cls = p == null ? 'text-slate-400' : 'text-slate-700';
     return `<td class="py-3 pr-4 text-right ${cls}">${pctTxt(p)}</td>`;
   };
-  el('tbody').innerHTML = list.length ? list.map((o) => `
-    <tr class="hover:bg-indigo-50/40">
+  el('tbody').innerHTML = list.length ? list.map((o, i) => `
+    <tr class="row-in hover:bg-indigo-50/40" style="animation-delay:${Math.min(i, 20) * 25}ms">
       <td class="py-3 px-4 font-semibold text-slate-900">${esc(o.mak)}</td>
       <td class="py-3 pr-4"><span class="rounded-full bg-indigo-50 px-2.5 py-0.5 text-sm font-medium text-indigo-700">${esc(o.cat1)}</span></td>
       <td class="py-3 pr-4 text-right">${fmtFull.format(o.pagu)}</td>
