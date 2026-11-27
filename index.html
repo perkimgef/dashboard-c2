@@ -254,7 +254,20 @@ Chart.defaults.font.family = '"Plus Jakarta Sans", ui-sans-serif, system-ui, san
 Chart.defaults.font.size = 13;
 Chart.defaults.color = '#64748b';
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-Chart.defaults.animation = REDUCED ? false : { duration: 900, easing: 'easeOutQuart' };
+// Ubah nilai bawaan satu per satu; mengganti seluruh objek animasi membuat grafik tidak mau diperbarui saat filter berubah
+if (REDUCED) { Chart.defaults.animation = false; }
+else { Chart.defaults.animation.duration = 900; Chart.defaults.animation.easing = 'easeOutQuart'; }
+
+// Perbarui isi grafik di tempat (label + nilai), lalu gambar ulang
+function swapData(chart, data) {
+  chart.data.labels = data.labels;
+  data.datasets.forEach((d, i) => {
+    if (chart.data.datasets[i]) Object.assign(chart.data.datasets[i], d);
+    else chart.data.datasets.push(d);
+  });
+  chart.data.datasets.length = data.datasets.length;
+  chart.update();
+}
 
 // Munculkan kartu satu per satu (sekali, setelah data pertama tampil)
 let revealed = false;
@@ -464,7 +477,7 @@ function renderLine(rows) {
       scales: { y: { ...axisMoney, ticks: { ...axisMoney.ticks }, grid: { ...axisMoney.grid } }, x: { ticks: { color: '#64748b', font: { size: 12 } }, grid: { display: false }, border: { display: false } } },
     },
   };
-  if (lineChart) { lineChart.data = cfg.data; lineChart.update(); } else { lineChart = new Chart(el('lineChart'), cfg); }
+  if (lineChart) { swapData(lineChart, cfg.data); } else { lineChart = new Chart(el('lineChart'), cfg); }
 }
 
 function renderBar(rows) {
@@ -496,7 +509,7 @@ function renderBar(rows) {
     },
   };
   byCatRef = byCat;
-  if (barChart) { barChart.data = data; barChart.update(); } else { barChart = new Chart(el('barChart'), cfg); }
+  if (barChart) { swapData(barChart, data); } else { barChart = new Chart(el('barChart'), cfg); }
 }
 let byCatRef = new Map();
 
@@ -546,7 +559,7 @@ function renderPie(rows) {
     labels: items.map(([k]) => k),
     datasets: [{ data: items.map(([, v]) => v), backgroundColor: items.map((_, i) => PIE_COLORS[i % PIE_COLORS.length]), borderColor: '#ffffff', borderWidth: 3, hoverOffset: 6 }],
   };
-  if (pieChart) { pieChart.$labelsReady = REDUCED; pieChart.data = data; pieChart.update(); return; }
+  if (pieChart) { pieChart.$labelsReady = REDUCED; swapData(pieChart, data); return; }
   pieChart = new Chart(el('pieChart'), {
     type: 'pie', data, plugins: [pieLabels],
     options: {
