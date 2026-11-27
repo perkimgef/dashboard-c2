@@ -183,7 +183,6 @@
   <section class="reveal card p-6">
     <div class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
       <h2 class="text-lg font-semibold text-slate-900"><span class="dot bg-violet-500"></span>Ringkasan data</h2>
-      <p id="rowCount" class="text-sm text-slate-400">—</p>
     </div>
     <div class="overflow-x-auto rounded-xl border border-slate-100">
       <table class="min-w-full text-[0.95rem]">
@@ -255,7 +254,7 @@ Chart.defaults.font.family = '"Plus Jakarta Sans", ui-sans-serif, system-ui, san
 Chart.defaults.font.size = 13;
 Chart.defaults.color = '#64748b';
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-Chart.defaults.animation = REDUCED ? false : { duration: 1000, easing: 'easeOutQuart' };
+Chart.defaults.animation = false;
 
 // Munculkan kartu satu per satu (sekali, setelah data pertama tampil)
 let revealed = false;
@@ -273,7 +272,7 @@ function countTo(node, to, fmt) {
   const from = parseFloat(node.dataset.v || '0');
   node.dataset.v = String(to);
   if (REDUCED || from === to) { node.textContent = fmt(to); return; }
-  const t0 = performance.now(), dur = 900;
+  const t0 = performance.now(), dur = 1600;
   const step = (t) => {
     const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
     node.textContent = fmt(from + (to - from) * e);
@@ -591,7 +590,6 @@ function renderTable(rows) {
       <td class="py-3 pr-4 text-right">${fmtFull.format(te)}</td>
       <td class="py-3 pr-4 text-right">${fmtFull.format(tr)}</td>
       <td class="py-3 pr-4 text-right">${pctTxt(pct(tr, te))}</td></tr>`;
-  // el('rowCount').textContent = `${list.length} baris ringkasan dari ${rows.length} baris data`;
 }
 
 // ====== Events ======
