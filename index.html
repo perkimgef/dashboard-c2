@@ -254,7 +254,7 @@ Chart.defaults.font.family = '"Plus Jakarta Sans", ui-sans-serif, system-ui, san
 Chart.defaults.font.size = 13;
 Chart.defaults.color = '#64748b';
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-Chart.defaults.animation = false;
+Chart.defaults.animation = REDUCED ? false : { duration: 900, easing: 'easeOutQuart' };
 
 // Munculkan kartu satu per satu (sekali, setelah data pertama tampil)
 let revealed = false;
@@ -272,7 +272,7 @@ function countTo(node, to, fmt) {
   const from = parseFloat(node.dataset.v || '0');
   node.dataset.v = String(to);
   if (REDUCED || from === to) { node.textContent = fmt(to); return; }
-  const t0 = performance.now(), dur = 1600;
+  const t0 = performance.now(), dur = 1200;
   const step = (t) => {
     const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
     node.textContent = fmt(from + (to - from) * e);
@@ -461,7 +461,7 @@ function renderLine(rows) {
     options: {
       responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
       plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, padding: 16, font: { size: 13 } } }, tooltip: tipMoney },
-      scales: { y: axisMoney, x: { ticks: { color: '#64748b', font: { size: 12 } }, grid: { display: false }, border: { display: false } } },
+      scales: { y: { ...axisMoney, ticks: { ...axisMoney.ticks }, grid: { ...axisMoney.grid } }, x: { ticks: { color: '#64748b', font: { size: 12 } }, grid: { display: false }, border: { display: false } } },
     },
   };
   if (lineChart) { lineChart.data = cfg.data; lineChart.update(); } else { lineChart = new Chart(el('lineChart'), cfg); }
@@ -492,7 +492,7 @@ function renderBar(rows) {
           afterBody: (items) => { const o = byCatRef.get(items[0].label); return o ? 'Serapan: ' + pctTxt(pct(o.real, o.eff)) : ''; },
         } },
       },
-      scales: { y: axisMoney, x: { ticks: { color: '#64748b', font: { size: 12 } }, grid: { display: false }, border: { display: false } } },
+      scales: { y: { ...axisMoney, ticks: { ...axisMoney.ticks }, grid: { ...axisMoney.grid } }, x: { ticks: { color: '#64748b', font: { size: 12 } }, grid: { display: false }, border: { display: false } } },
     },
   };
   byCatRef = byCat;
@@ -504,6 +504,7 @@ let byCatRef = new Map();
 const pieLabels = {
   id: 'pieLabels',
   afterDatasetsDraw(chart) {
+    if (!chart.$labelsReady) return;
     const { ctx } = chart;
     const ds = chart.data.datasets[0];
     const total = ds.data.reduce((a, b) => a + b, 0);
@@ -545,11 +546,12 @@ function renderPie(rows) {
     labels: items.map(([k]) => k),
     datasets: [{ data: items.map(([, v]) => v), backgroundColor: items.map((_, i) => PIE_COLORS[i % PIE_COLORS.length]), borderColor: '#ffffff', borderWidth: 3, hoverOffset: 6 }],
   };
-  if (pieChart) { pieChart.data = data; pieChart.update(); return; }
+  if (pieChart) { pieChart.$labelsReady = REDUCED; pieChart.data = data; pieChart.update(); return; }
   pieChart = new Chart(el('pieChart'), {
     type: 'pie', data, plugins: [pieLabels],
     options: {
       responsive: true, maintainAspectRatio: false,
+      animation: REDUCED ? false : { duration: 900, easing: 'easeOutQuart', onComplete: ({ chart }) => { if (!chart.$labelsReady) { chart.$labelsReady = true; chart.draw(); } } },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: (ctx) => {
@@ -559,6 +561,7 @@ function renderPie(rows) {
       },
     },
   });
+  if (REDUCED) { pieChart.$labelsReady = true; pieChart.draw(); }
 }
 
 function renderTable(rows) {
